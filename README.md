@@ -74,7 +74,8 @@ A decentralized Web3-powered Supply Chain Management System that integrates **AI
 
 
 - **Controls**
-(https://github.com/user-attachments/assets/0d053811-a54c-4585-9162-5ce79123166e)![WhatsApp Image 2025-06-05 at 19 10 30](https://github.com/user-attachments/assets/42ee3615-17b2-4a29-aeac-a2621932befc)
+(https://github.com/user-attachments/assets/0d053811-a54c-4585-9162-5ce79123166e)
+(https://github.com/user-attachments/assets/42ee3615-17b2-4a29-aeac-a2621932befc)
 (https://github.com/user-attachments/assets/42e97ac8-116a-4ce2-98f6-ee78322f747c)
 
 
