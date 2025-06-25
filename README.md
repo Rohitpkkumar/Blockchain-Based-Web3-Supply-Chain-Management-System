@@ -59,18 +59,25 @@ A decentralized Web3-powered Supply Chain Management System that integrates **AI
 ## Screenshots
 
 - **Dashboard View**  
-![WhatsApp Image 2025-06-05 at 19 10 04](https://github.com/user-attachments/assets/f2309051-bf18-4a04-a881-9f1fc3475695)
+(https://github.com/user-attachments/assets/f2309051-bf18-4a04-a881-9f1fc3475695)
+(https://github.com/user-attachments/assets/00340e77-da46-4fde-9965-9b67a86955d3)
+
 
 - **Partner Management**  
-  ![Partner](assets/partners.png)
+(https://github.com/user-attachments/assets/9fd03315-0744-4d75-ad7c-89c110ca1f58)
+(https://github.com/user-attachments/assets/bce9bdae-a670-4439-9dcf-1158c6dc0e46)
+
 
 - **Order Creation**  
-  ![Orders](assets/orders.png)
+(https://github.com/user-attachments/assets/87b99030-c2d8-469a-83fa-f3db3658b1d1)
+(https://github.com/user-attachments/assets/335a29bf-f8cc-45a2-a1c2-7c7c3e4c7827)
 
-- **AI Delay Prediction**  
-  ![AI Delay](assets/ai-delay.png)
 
----
+- **Controls**
+(https://github.com/user-attachments/assets/0d053811-a54c-4585-9162-5ce79123166e)![WhatsApp Image 2025-06-05 at 19 10 30](https://github.com/user-attachments/assets/42ee3615-17b2-4a29-aeac-a2621932befc)
+(https://github.com/user-attachments/assets/42e97ac8-116a-4ce2-98f6-ee78322f747c)
+
+
 
 ## Deployment Instructions
 
