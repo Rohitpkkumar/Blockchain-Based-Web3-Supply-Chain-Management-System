@@ -1,0 +1,302 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { ethers } from 'ethers';
+import Map from '../components/common/Map';
+import ShipmentSummary from '../components/dashboard/ShipmentSummary';
+import AIDelayPrediction from '../components/dashboard/AIDelayPrediction'; // New component
+import CarbonCalculator from '../components/dashboard/CarbonCalculator';
+import RecentOrders from '../components/dashboard/RecentOrders';
+import FraudDetection from '../components/dashboard/FraudDetection';
+import { MapMarker, Order, CarbonEmission, FraudAlert, Partner, UserLocation } from '../types';
+import { useWallet } from '../context/WalletContext';
+import { getAllOrders, getAllPartners, getUserLocation } from '/Users/rohitkumar/Desktop/project 5/src/contracts.ts';
+import { Clock } from 'lucide-react';
+
+interface DashboardProps {
+  isMapExpanded: boolean;
+  onToggleMapExpand: () => void;
+}
+
+interface ActiveShipment {
+  id: string;
+  origin: { lat: number; lng: number };
+  destination: { lat: number; lng: number };
+  shipmentType: 'standard' | 'perishable' | 'hazardous';
+  productType: string;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ isMapExpanded, onToggleMapExpand }) => {
+  const { state: walletState } = useWallet();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const mapRef = useRef<L.Map | null>(null);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [activeShipments, setActiveShipments] = useState<ActiveShipment[]>([]);
+  const [delayPredictions, setDelayPredictions] = useState<any[]>([]);
+  const [isLoadingPredictions, setIsLoadingPredictions] = useState(false);
+
+  // Mock data for other components
+  const carbonEmissions: CarbonEmission[] = [
+    {
+      orderId: '1001',
+      emissions: 125.5,
+      distance: 450,
+      transportType: 'Truck',
+    },
+    {
+      orderId: '1002',
+      emissions: 200.2,
+      distance: 720,
+      transportType: 'Ship',
+    },
+    {
+      orderId: '1005',
+      emissions: 90.8,
+      distance: 320,
+      transportType: 'Truck',
+    },
+  ];
+
+  const fraudAlerts: FraudAlert[] = [
+    {
+      id: 'fraud-1',
+      type: 'duplicate_address',
+      severity: 'medium',
+      description: 'Multiple suppliers sharing the same physical address may indicate fraudulent entities.',
+      relatedIds: ['SUPP-002', 'SUPP-005'],
+    },
+    {
+      id: 'fraud-2',
+      type: 'suspicious_pattern',
+      severity: 'high',
+      description: 'Unusual pattern of large orders followed by quick cancellations detected.',
+      relatedIds: ['ORD-1004', 'ORD-982', 'ORD-981'],
+    },
+  ];
+
+  // Fetch delay predictions from AI service
+  // In Dashboard.tsx (update the useEffect for predictions)
+// Update the useEffect for predictions
+useEffect(() => {
+  const fetchDelayPredictions = async () => {
+    if (activeShipments.length === 0) return;
+    
+    setIsLoadingPredictions(true);
+    try {
+      const predictions = await Promise.all(
+        activeShipments.map(async (shipment) => {
+          try {
+            const response = await fetch('http://localhost:5000/predict-delay', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                origin: shipment.origin,
+                destination: shipment.destination,
+                shipmentType: shipment.shipmentType
+              }),
+            });
+            
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return await response.json();
+          } catch (error) {
+            console.error(`Error predicting delay for shipment ${shipment.id}:`, error);
+            return { 
+              error: 'Prediction service unavailable',
+              predicted_delay_hours: 0,
+              reason: 'Service unavailable - using default estimates'
+            };
+          }
+        })
+      );
+      setDelayPredictions(predictions);
+    } catch (error) {
+      console.error('Error fetching delay predictions:', error);
+      setDelayPredictions(
+        activeShipments.map(() => ({
+          error: 'Prediction failed',
+          predicted_delay_hours: 0,
+          reason: 'Service unavailable - using default estimates'
+        }))
+      );
+    } finally {
+      setIsLoadingPredictions(false);
+    }
+  };
+
+  fetchDelayPredictions();
+}, [activeShipments]);
+
+  // Update map view when user location changes
+  useEffect(() => {
+    if (userLocation && mapRef.current) {
+      mapRef.current.flyTo([userLocation.position.lat, userLocation.position.lng], 12);
+    }
+  }, [userLocation]);
+
+  // Load blockchain data
+  useEffect(() => {
+    const loadData = async () => {
+      if (walletState.isConnected && window.ethereum) {
+        try {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const [ordersData, partnersData] = await Promise.all([
+            getAllOrders(provider),
+            getAllPartners(provider)
+          ]);
+
+          if (walletState.address) {
+            const location = await getUserLocation(provider, walletState.address);
+            setUserLocation(location);
+          }
+
+          setOrders(ordersData);
+          setPartners(partnersData);
+          setIsLoading(false);
+        } catch (error) {
+          console.error('Failed to load data:', error);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadData();
+  }, [walletState.isConnected, walletState.address]);
+
+  // Extract active shipments for delay prediction
+  useEffect(() => {
+    if (orders.length > 0 && partners.length > 0 && userLocation) {
+      const active: ActiveShipment[] = orders
+        .filter(order => order.shipmentStatus === 'In Transit')
+        .map(order => {
+          const supplier = partners.find(p => p.id === order.supplierId);
+          return {
+            id: order.id,
+            origin: userLocation.position,
+            destination: supplier?.position || { lat: 0, lng: 0 },
+            shipmentType: order.productType === 'Perishable' ? 'perishable' : 
+                        order.productType === 'Hazardous' ? 'hazardous' : 'standard',
+            productType: order.productType
+          };
+        });
+      setActiveShipments(active);
+    }
+  }, [orders, partners, userLocation]);
+
+  // Update map markers
+  useEffect(() => {
+    const markers: MapMarker[] = [];
+
+    if (userLocation) {
+      markers.push({
+        id: 'user-1',
+        position: userLocation.position,
+        type: 'user',
+        label: 'HQ'
+      });
+    }
+
+    partners.forEach(partner => {
+      markers.push({
+        id: partner.id,
+        position: partner.position,
+        type: 'partner',
+        label: partner.name,
+        partnerType: partner.type
+      });
+    });
+
+    orders
+      .filter(order => order.shipmentStatus === 'In Transit' && order.carrierId)
+      .forEach(order => {
+        const partner = partners.find(p => p.id === order.supplierId);
+        if (partner) {
+          markers.push({
+            id: `carrier-${order.carrierId}`,
+            position: partner.position,
+            type: 'carrier',
+            label: `Shipment ${order.id}`,
+            orderId: order.id
+          });
+        }
+      });
+
+    setMapMarkers(markers);
+  }, [partners, orders, userLocation]);
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-4 lg:p-6">
+        <div className="flex justify-center items-center h-64">
+          <p>Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto p-4 lg:p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600">Overview of your supply chain operations</p>
+      </div>
+
+      <div className="mb-6">
+        <Map
+          markers={mapMarkers}
+          userLocation={userLocation?.position} 
+          isExpanded={isMapExpanded}
+          onToggleExpand={onToggleMapExpand}
+        />
+      </div>
+
+      <div className="mb-6">
+        <ShipmentSummary orders={orders} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {/* AI Delay Predictions Section */}
+        <div className="space-y-4">
+  <h2 className="text-lg font-medium text-gray-900">AI Delay Predictions</h2>
+  {isLoadingPredictions ? (
+    <div className="p-4 bg-blue-50 rounded-md flex items-center">
+      <Clock className="mr-2 text-blue-500" size={16} />
+      <span>Calculating delay predictions...</span>
+    </div>
+  ) : activeShipments.length > 0 ? (
+    activeShipments.map((shipment, index) => (
+      <AIDelayPrediction
+        key={shipment.id}
+        orderId={shipment.id}
+        origin={shipment.origin}
+        destination={shipment.destination}
+        shipmentType={shipment.shipmentType}
+        prediction={delayPredictions[index] || {
+          error: 'No prediction data',
+          predicted_delay_hours: 0,
+          reason: 'Prediction data missing'
+        }}
+      />
+    ))
+  ) : (
+    <div className="p-4 bg-gray-50 rounded-md text-center text-gray-500">
+      No active shipments to analyze
+    </div>
+  )}
+</div>
+
+        <CarbonCalculator emissions={carbonEmissions} />
+      </div>
+
+      <div className="mt-6">
+        <RecentOrders orders={orders} />
+      </div>
+
+      <div className="mt-6">
+        <FraudDetection alerts={fraudAlerts} />
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;

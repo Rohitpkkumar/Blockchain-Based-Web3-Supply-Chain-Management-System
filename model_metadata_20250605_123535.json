@@ -1,0 +1,31 @@
+{
+  "training_date": "20250605_123535",
+  "features_used": [
+    "distance_km",
+    "carrier_experience",
+    "border_crossings",
+    "origin_weather_severity",
+    "dest_weather_severity",
+    "total_weather_impact",
+    "traffic_level",
+    "road_conditions",
+    "vehicle_type",
+    "shipment_type",
+    "is_weekend",
+    "is_peak_hours",
+    "route_complexity",
+    "carrier_efficiency"
+  ],
+  "target_variable": "actual_delay_hours",
+  "model_type": "RandomForestRegressor",
+  "performance_metrics": {
+    "MAE": 2.662428916726764,
+    "RMSE": 5.9519480431693355,
+    "R2": 0.896286640969955
+  },
+  "data_description": {
+    "samples": 20000,
+    "average_delay": 59.16508480355428,
+    "max_delay": 72.0
+  }
+}
